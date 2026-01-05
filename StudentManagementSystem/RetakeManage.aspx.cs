@@ -61,7 +61,8 @@ public partial class RetakeManage : System.Web.UI.Page
         if (score < 0) return "<span style='color:#ef4444'>缺考</span>";
 
         // 既然是补考申请，肯定是挂科的，用红色显示
-        return $"<span style='color:#ef4444'>{score}</span>";
+        // 兼容性修复：使用 string.Format 替代 $
+        return string.Format("<span style='color:#ef4444'>{0}</span>", score);
     }
 
     // --- 3. 审批操作 (批准/驳回) ---
@@ -87,7 +88,10 @@ public partial class RetakeManage : System.Web.UI.Page
                 if (rows > 0)
                 {
                     string msg = (newStatus == 3) ? "✅ 已批准补考申请。" : "🚫 已驳回该申请。";
-                    ScriptManager.RegisterStartupScript(this, GetType(), "toast", $"alert('{msg}');", true);
+
+                    // 兼容性修复：使用 string.Format 替代 $
+                    string js = string.Format("alert('{0}');", msg);
+                    ScriptManager.RegisterStartupScript(this, GetType(), "toast", js, true);
                 }
                 else
                 {
@@ -98,7 +102,10 @@ public partial class RetakeManage : System.Web.UI.Page
             catch (Exception ex)
             {
                 string err = ex.Message.Replace("'", "");
-                ScriptManager.RegisterStartupScript(this, GetType(), "error", $"alert('❌ 系统错误：{err}');", true);
+
+                // 兼容性修复：使用 string.Format 替代 $
+                string jsError = string.Format("alert('❌ 系统错误：{0}');", err);
+                ScriptManager.RegisterStartupScript(this, GetType(), "error", jsError, true);
             }
 
             // 操作完成后刷新列表
