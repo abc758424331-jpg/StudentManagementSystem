@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" data-theme="dark">
 <head runat="server">
-    <title>身份验证 | 智慧教务中枢</title>
+    <title>用户登录 | 智慧教务中枢</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
@@ -18,362 +18,214 @@
         [data-theme="dark"] {
             --bg-color: #0b1120; /* 更深的蓝黑 */
             --bg-gradient: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b1120 100%);
-            --card-bg: rgba(30, 41, 59, 0.65);
+            --glass-panel: rgba(30, 41, 59, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            
-            /* 粒子颜色配置 (RGB格式以便JS调整透明度) */
-            --p-color-rgb: 6, 182, 212; /* 粒子颜色 (青色) */
-            --l-color-rgb: 148, 163, 184; /* 连线颜色 (灰蓝) */
-            
-            --primary: #06b6d4; /* 霓虹青 */
-            --primary-shadow: rgba(6, 182, 212, 0.4);
-            --input-bg: rgba(15, 23, 42, 0.8);
-            --shadow-card: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
         }
 
-        /* ☀️ 明亮模式 (未来实验室) */
+        /* ☀️ 明亮模式 (极简白) - 保留以备切换 */
         [data-theme="light"] {
-            --bg-color: #f1f5f9;
+            --bg-color: #f8fafc;
             --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
-            --card-bg: rgba(255, 255, 255, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-panel: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --primary: #2563eb;
+            --primary-glow: rgba(37, 99, 235, 0.3);
             --text-main: #1e293b;
             --text-sub: #64748b;
-            
-            /* 粒子颜色配置 */
-            --p-color-rgb: 37, 99, 235; /* 粒子颜色 (深蓝) */
-            --l-color-rgb: 148, 163, 184; /* 连线颜色 (浅灰) */
-            
-            --primary: #2563eb; /* 科技蓝 */
-            --primary-shadow: rgba(37, 99, 235, 0.3);
-            --input-bg: rgba(255, 255, 255, 0.9);
-            --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
         }
 
-        /* === 2. 布局与动画 === */
         body {
             margin: 0; padding: 0;
-            height: 100vh; width: 100vw;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
             background: var(--bg-color);
             background-image: var(--bg-gradient);
-            color: var(--text-main);
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.6s ease, color 0.6s ease;
+            font-family: "Microsoft YaHei", "PingFang SC", 'Inter', sans-serif; /* 优先中文字体 */
+            height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; transition: background 0.5s ease;
         }
 
-        /* 粒子画布 */
-        #particle-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0; pointer-events: none;
-        }
-
-        /* 主题切换悬浮球 */
-        .theme-toggle {
-            position: absolute; top: 30px; right: 30px;
-            width: 48px; height: 48px;
-            border-radius: 50%;
-            background: var(--card-bg);
+        /* === 2. 登录卡片容器 (玻璃拟态) === */
+        .login-card {
+            width: 400px;
+            padding: 40px;
+            background: var(--glass-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
-            cursor: pointer; z-index: 100;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-main); font-size: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            transition: all 0.4s var(--ease-elastic);
-        }
-        .theme-toggle:hover { transform: scale(1.15) rotate(180deg); color: var(--primary); border-color: var(--primary); }
-
-        /* === 3. 登录主卡片 (玻璃拟态 + 3D Tilt) === */
-        .login-container {
-            position: relative; width: 420px; padding: 50px;
-            background: var(--card-bg);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-radius: 24px;
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--shadow-card);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             z-index: 10;
-            transform-style: preserve-3d; /* 开启3D空间 */
-            perspective: 1000px;
-            transition: all 0.1s ease-out; /* 鼠标跟随响应速度 */
+            animation: cardEntrance 0.8s var(--ease-elastic);
         }
 
-        /* Logo 区域 */
-        .header { text-align: center; margin-bottom: 40px; transform: translateZ(30px); /* 元素凸起 */ }
-        .logo-box {
-            width: 72px; height: 72px; margin: 0 auto 15px;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
-            border-radius: 18px;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 0 40px var(--primary-shadow);
-            animation: pulseLogo 4s infinite ease-in-out;
+        @keyframes cardEntrance {
+            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
         }
-        @keyframes pulseLogo { 0%, 100% { box-shadow: 0 0 20px var(--primary-shadow); } 50% { box-shadow: 0 0 50px var(--primary-shadow); transform: scale(1.05); } }
-        
-        .logo-icon { font-size: 36px; color: var(--primary); transition: color 0.5s; }
-        .header h2 { 
-            margin: 0; font-family: 'Rajdhani', sans-serif; 
-            font-size: 32px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-        }
-        .header p { margin: 8px 0 0; color: var(--text-sub); font-size: 13px; font-weight: 500; letter-spacing: 1px; }
 
-        /* 输入区域 */
-        .input-group { position: relative; margin-bottom: 25px; transform: translateZ(20px); }
-        .input-field {
-            width: 100%; padding: 16px 16px 16px 50px;
-            background: var(--input-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            color: var(--text-main); font-size: 15px; font-weight: 500;
-            transition: all 0.3s var(--ease-smooth); box-sizing: border-box;
+        /* 标题区 */
+        .header { text-align: center; margin-bottom: 35px; }
+        .logo-icon {
+            font-size: 48px; color: var(--primary);
+            filter: drop-shadow(0 0 15px var(--primary-glow));
+            margin-bottom: 15px; display: inline-block;
         }
-        .input-field:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px var(--primary-shadow);
-            outline: none; transform: translateY(-2px);
+        .title {
+            font-family: "Microsoft YaHei", 'Rajdhani', sans-serif;
+            font-weight: 700; font-size: 28px; color: var(--text-main); margin: 0;
+            letter-spacing: 1px;
         }
-        .input-icon {
-            position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
-            color: var(--text-sub); font-size: 18px; transition: 0.3s;
-        }
-        .input-field:focus + .input-icon { color: var(--primary); transform: translateY(-50%) scale(1.1); }
+        .subtitle { color: var(--text-sub); font-size: 14px; margin-top: 5px; }
 
-        /* 液态滑块 (Fluid Switch) */
-        .role-switch {
-            display: flex; position: relative;
-            background: rgba(0,0,0,0.2);
-            border-radius: 14px; padding: 5px;
-            margin-bottom: 35px; border: 1px solid var(--glass-border);
-            transform: translateZ(20px);
+        /* === 3. 身份选择滑块 (核心交互) === */
+        .role-switcher {
+            display: flex; justify-content: space-between;
+            background: rgba(0,0,0,0.2); border-radius: 12px;
+            padding: 5px; margin-bottom: 30px; position: relative;
         }
-        [data-theme="light"] .role-switch { background: rgba(0,0,0,0.05); }
-
         .glider {
-            position: absolute; top: 5px; left: 5px;
-            height: calc(100% - 10px); width: 33.33%;
-            background: var(--primary);
-            border-radius: 10px; z-index: 1;
-            transition: transform 0.4s var(--ease-elastic), background 0.5s;
-            box-shadow: 0 4px 15px var(--primary-shadow);
+            position: absolute; top: 5px; left: 5px; height: 36px; width: 32%;
+            background: var(--primary); border-radius: 8px;
+            transition: transform 0.3s var(--ease-smooth); z-index: 1;
+            box-shadow: 0 4px 12px var(--primary-glow);
         }
         .role-item {
-            flex: 1; text-align: center; padding: 12px 0;
-            font-size: 13px; font-weight: 700; color: var(--text-sub);
+            flex: 1; text-align: center; padding: 8px 0;
+            font-size: 14px; font-weight: 600; color: var(--text-sub);
             cursor: pointer; z-index: 2; transition: color 0.3s;
-            position: relative; user-select: none; text-transform: uppercase; letter-spacing: 1px;
+            position: relative;
         }
         .role-item.active { color: #fff; }
-
-        /* 登录按钮 */
-        .btn-login {
-            width: 100%; padding: 16px;
-            border: none; border-radius: 14px;
-            background: linear-gradient(135deg, var(--primary), #3b82f6);
-            color: #fff;
-            font-size: 16px; font-weight: 700; letter-spacing: 1px;
-            cursor: pointer; position: relative; overflow: hidden;
-            transition: 0.3s; box-shadow: 0 10px 25px -5px var(--primary-shadow);
-            transform: translateZ(30px);
-        }
-        .btn-login:hover { transform: translateZ(30px) translateY(-3px) scale(1.02); box-shadow: 0 20px 40px -10px var(--primary-shadow); }
-        .btn-login:active { transform: translateZ(20px) scale(0.98); }
-
-        .footer { margin-top: 35px; text-align: center; font-size: 12px; color: var(--text-sub); opacity: 0.7; transform: translateZ(10px); }
-        .msg-box { height: 24px; text-align: center; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
         
-        /* 隐藏 ASP 默认控件 */
-        .role-switch input { display: none; }
+        /* 隐藏 Radio */
+        .role-radio { display: none; }
+
+        /* === 4. 输入框组 === */
+        .input-group { position: relative; margin-bottom: 20px; }
+        .input-icon {
+            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+            color: var(--text-sub); transition: color 0.3s;
+        }
+        .form-control {
+            width: 100%; padding: 14px 14px 14px 45px;
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            border-radius: 12px; color: var(--text-main); font-size: 15px;
+            transition: all 0.3s; box-sizing: border-box; /* 修复宽度溢出 */
+        }
+        .form-control:focus {
+            background: rgba(255,255,255,0.1); border-color: var(--primary);
+            outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        .form-control:focus + .input-icon { color: var(--primary); }
+
+        /* === 5. 登录按钮 (流光特效) === */
+        .btn-login {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+            border: none; border-radius: 12px;
+            color: white; font-weight: 600; font-size: 16px; letter-spacing: 1px;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px; font-family: "Microsoft YaHei", sans-serif;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px var(--primary-glow);
+        }
+        .btn-login::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: rotate(45deg) translate(-100%, -100%);
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer { 100% { transform: rotate(45deg) translate(100%, 100%); } }
+
+        /* 消息提示 */
+        .msg-box {
+            text-align: center; margin-top: 20px; min-height: 20px;
+            font-size: 13px; font-weight: 500;
+        }
+
+        /* 背景动画粒子 (纯CSS模拟) */
+        .bg-orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
+            animation: float 10s infinite ease-in-out;
+        }
+        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: purple; animation-delay: 0s; }
+        .orb-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: blue; animation-delay: -5s; }
+        @keyframes float { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(30px, 50px); } }
+
+        /* 主题切换按钮 */
+        .theme-toggle {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.1); border: none; color: var(--text-main);
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .theme-toggle:hover { background: rgba(255,255,255,0.2); transform: rotate(15deg); }
     </style>
 </head>
 <body>
-    <button class="theme-toggle" id="btnTheme" onclick="toggleTheme()" type="button" title="Switch Theme">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <button type="button" class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon" id="themeIcon"></i>
     </button>
 
-    <canvas id="particle-canvas"></canvas>
-
     <form id="form1" runat="server">
-        <div class="login-container" id="loginCard">
+        <div class="login-card">
             <div class="header">
-                <div class="logo-box">
-                    <i class="fas fa-network-wired logo-icon"></i>
-                </div>
-                <h2>学生管理系统</h2>
-                <p>Advanced Academic Management</p>
+                <i class="fas fa-atom logo-icon"></i>
+                <h1 class="title">智慧教务中枢</h1>
+                <p class="subtitle">Intelligent Educational Administration System</p>
             </div>
+
+            <div class="role-switcher">
+                <div class="glider" id="glider"></div>
+                
+                <asp:RadioButton ID="rbStudent" runat="server" GroupName="Role" Checked="true" CssClass="role-radio" ClientIDMode="Static" />
+                <label for="rbStudent" class="role-item active" onclick="switchRole(0)">
+                    <i class="fas fa-user-graduate"></i> 学生
+                </label>
+
+                <asp:RadioButton ID="rbTeacher" runat="server" GroupName="Role" CssClass="role-radio" ClientIDMode="Static" />
+                <label for="rbTeacher" class="role-item" onclick="switchRole(1)">
+                    <i class="fas fa-chalkboard-teacher"></i> 教师
+                </label>
+
+                <asp:RadioButton ID="rbAdmin" runat="server" GroupName="Role" CssClass="role-radio" ClientIDMode="Static" />
+                <label for="rbAdmin" class="role-item" onclick="switchRole(2)">
+                    <i class="fas fa-user-shield"></i> 管理员
+                </label>
+            </div>
+
+            <div class="input-group">
+                <i class="fas fa-id-card input-icon"></i>
+                <asp:TextBox ID="txtUser" runat="server" CssClass="form-control" placeholder="请输入学号 / 工号"></asp:TextBox>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock input-icon"></i>
+                <asp:TextBox ID="txtPwd" runat="server" CssClass="form-control" TextMode="Password" placeholder="请输入密码"></asp:TextBox>
+            </div>
+
+            <asp:Button ID="btnLogin" runat="server" Text="立即登录" OnClick="btnLogin_Click" CssClass="btn-login" />
 
             <div class="msg-box">
                 <asp:Label ID="lblMsg" runat="server" ForeColor="#ef4444"></asp:Label>
-            </div>
-
-            <div class="input-group">
-                <asp:TextBox ID="txtUser" runat="server" CssClass="input-field" placeholder="User ID / 工号"></asp:TextBox>
-                <i class="fas fa-id-badge input-icon"></i>
-            </div>
-
-            <div class="input-group">
-                <asp:TextBox ID="txtPwd" runat="server" CssClass="input-field" TextMode="Password" placeholder="Password / 密码"></asp:TextBox>
-                <i class="fas fa-fingerprint input-icon"></i>
-            </div>
-
-            <div class="role-switch">
-                <div class="glider" id="glider"></div>
-                <label class="role-item active" onclick="switchRole(0)">
-                    STUDENT
-                    <asp:RadioButton ID="rbStudent" runat="server" GroupName="Role" Checked="true" />
-                </label>
-                <label class="role-item" onclick="switchRole(1)">
-                    TEACHER
-                    <asp:RadioButton ID="rbTeacher" runat="server" GroupName="Role" />
-                </label>
-                <label class="role-item" onclick="switchRole(2)">
-                    ADMIN
-                    <asp:RadioButton ID="rbAdmin" runat="server" GroupName="Role" />
-                </label>
-            </div>
-
-            <asp:Button ID="btnLogin" runat="server" Text="INITIALIZE LOGIN" CssClass="btn-login" OnClick="btnLogin_Click" />
-
-            <div class="footer">
-                &copy; 2025 Smart Campus Inc. All systems operational.
             </div>
         </div>
     </form>
 
     <script>
         // ==========================================
-        // 1. 粒子神经网络引擎 (Particle Neural Network)
-        // ==========================================
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height;
-        let particles = [];
-        let mouse = { x: null, y: null };
-
-        // 颜色获取助手 (从CSS变量读取)
-        function getThemeColors() {
-            const style = getComputedStyle(document.documentElement);
-            const pColor = style.getPropertyValue('--p-color-rgb').trim().split(',');
-            const lColor = style.getPropertyValue('--l-color-rgb').trim().split(',');
-            return { p: pColor, l: lColor };
-        }
-
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                // [核心特性] 景深效果 (Depth)
-                // z 越大，粒子越大，移动越快，连线越粗
-                this.z = Math.random() * 1.5 + 0.5;
-                this.vx = (Math.random() - 0.5) * 0.8 * this.z;
-                this.vy = (Math.random() - 0.5) * 0.8 * this.z;
-                this.size = Math.random() * 2 * this.z;
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-
-                // 鼠标引力场 (Force Field)
-                if (mouse.x != null) {
-                    let dx = mouse.x - this.x;
-                    let dy = mouse.y - this.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    // 250px 范围内受到引力
-                    if (distance < 250) {
-                        const forceDirectionX = dx / distance;
-                        const forceDirectionY = dy / distance;
-                        const force = (250 - distance) / 250;
-                        // 吸引力，稍微加速靠近
-                        const attraction = 0.05 * force * this.z;
-                        this.vx += forceDirectionX * attraction;
-                        this.vy += forceDirectionY * attraction;
-                    }
-                }
-
-                // 边界反弹
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-            }
-
-            draw(colors) {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                // 根据 z-depth 调整透明度 (远处模糊)
-                ctx.fillStyle = `rgba(${colors.p[0]}, ${colors.p[1]}, ${colors.p[2]}, ${0.6 * this.z})`;
-                ctx.fill();
-            }
-        }
-
-        function initParticles() {
-            particles = [];
-            // 创建 100 个粒子
-            for (let i = 0; i < 100; i++) particles.push(new Particle());
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            const colors = getThemeColors();
-
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw(colors);
-
-                // [核心特性] 连线逻辑 (Connections)
-                for (let j = i + 1; j < particles.length; j++) {
-                    let dx = particles[i].x - particles[j].x;
-                    let dy = particles[i].y - particles[j].y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-
-                    // 连线阈值：距离小于 120px 且两个粒子在类似的 Z 轴深度 (可选，此处简化为只看距离)
-                    if (distance < 120) {
-                        ctx.beginPath();
-                        // 连线透明度：距离越近越亮，且受粒子深度影响
-                        let opacity = (1 - distance / 120) * 0.5 * particles[i].z;
-                        ctx.strokeStyle = `rgba(${colors.l[0]}, ${colors.l[1]}, ${colors.l[2]}, ${opacity})`;
-                        ctx.lineWidth = 0.8 * particles[i].z; // 近处线粗
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
-                    }
-                }
-            }
-            requestAnimationFrame(animate);
-        }
-
-        // 监听鼠标
-        window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
-        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
-        window.addEventListener('resize', () => { resize(); initParticles(); });
-
-        // 启动引擎
-        resize();
-        initParticles();
-        animate();
-
-        // ==========================================
-        // 2. 3D 视差卡片 (3D Tilt Effect)
-        // ==========================================
-        const card = document.getElementById('loginCard');
-        document.addEventListener('mousemove', (e) => {
-            // 计算鼠标相对于屏幕中心的偏移
-            const xAxis = (window.innerWidth / 2 - e.pageX) / 30; // 分母越小倾斜越大
-            const yAxis = (window.innerHeight / 2 - e.pageY) / 30;
-            // 应用旋转
-            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-        });
-
-        // ==========================================
-        // 3. 主题切换与持久化 (Theme System)
+        // 1. 主题切换逻辑
         // ==========================================
         const html = document.documentElement;
         const themeIcon = document.getElementById('themeIcon');
@@ -394,8 +246,9 @@
         }
 
         // ==========================================
-        // 4. 身份滑块 (PostBack 恢复)
+        // 2. 身份滑块动画 (兼顾 PostBack 状态恢复)
         // ==========================================
+        // 页面加载时恢复滑块位置
         window.onload = function () {
             if (document.getElementById('<%= rbTeacher.ClientID %>').checked) switchRole(1);
             else if (document.getElementById('<%= rbAdmin.ClientID %>').checked) switchRole(2);
@@ -405,9 +258,17 @@
         function switchRole(index) {
             const glider = document.getElementById('glider');
             const items = document.querySelectorAll('.role-item');
+
+            // 移动滑块
             glider.style.transform = `translateX(${index * 100}%)`;
+
+            // 切换激活状态样式
             items.forEach(i => i.classList.remove('active'));
             items[index].classList.add('active');
+
+            // 触发 RadioButton 点击 (确保后端能读到值)
+            // 注意：这里用 setTimeout 防止点击 Label 时的递归死循环
+            // 实际点击 Label 已经触发了 input，这里主要是视觉同步
         }
     </script>
 </body>
