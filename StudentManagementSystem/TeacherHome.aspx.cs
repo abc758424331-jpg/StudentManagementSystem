@@ -14,7 +14,7 @@ public partial class TeacherHome : System.Web.UI.Page
 
         if (!IsPostBack)
         {
-            lblName.Text = Session["User"] != null ? Session["User"].ToString() : "Teacher";
+            lblName.Text = Session["User"] != null ? Session["User"].ToString() : "教师";
 
             LoadTerms();
             LoadMyCourses();
@@ -25,18 +25,21 @@ public partial class TeacherHome : System.Web.UI.Page
     // --- 1. 加载学期下拉框 ---
     private void LoadTerms()
     {
-        // 获取该教师名下课程涉及的所有学期
-        string tid = Session["UserId"].ToString();
-        string sql = "SELECT DISTINCT semester FROM Courses WHERE TeacherId = @tid ORDER BY semester DESC";
+        // 获取所有相关学期 (课程表 + 成绩表)
+        string sql = @"
+            SELECT semester AS Term FROM Courses WHERE semester IS NOT NULL
+            UNION
+            SELECT Term FROM Scores WHERE Term IS NOT NULL
+            ORDER BY Term DESC";
 
-        DataTable dt = SqlHelper.ExecuteQuery(sql, new SqlParameter("@tid", tid));
+        DataTable dt = SqlHelper.ExecuteQuery(sql);
 
         ddlTerm.DataSource = dt;
-        ddlTerm.DataTextField = "semester";
-        ddlTerm.DataValueField = "semester";
+        ddlTerm.DataTextField = "Term";
+        ddlTerm.DataValueField = "Term";
         ddlTerm.DataBind();
 
-        // 默认加载最新学期
+        // 默认选中第一个
         if (ddlTerm.Items.Count > 0)
         {
             ddlTerm.SelectedIndex = 0;
@@ -63,20 +66,12 @@ public partial class TeacherHome : System.Web.UI.Page
 
         gvMyCourses.DataSource = dt;
         gvMyCourses.DataBind();
-
-        // 根据是否有数据控制“空状态”显示
-        if (dt.Rows.Count == 0)
-        {
-            // 如果需要显示空模板，GridView会自动处理 EmptyDataTemplate
-            // 这里可以留空
-        }
     }
 
-    // --- 3. 检查待办事项 (HUD Alert) ---
+    // --- 3. 检查待办事项 (面板警报) ---
     private void CheckTodo()
     {
         // 检查是否有待审批的补考申请 (RetakeStatus = 2)
-        // 仅检查当前教师名下的课程
         string tid = Session["UserId"].ToString();
         string sql = @"
             SELECT COUNT(*) 
@@ -89,29 +84,24 @@ public partial class TeacherHome : System.Web.UI.Page
 
         ltlTodoCount.Text = count.ToString();
 
-        // 如果有待办，给面板添加警报样式 (CSS类名 card-alert 需要在 CSS 中定义，或者这里仅作逻辑处理)
-        if (count > 0)
-        {
-            pnlTodo.CssClass += " card-alert";
-        }
+        // 如果有待办，前端会根据数字显示高亮，这里仅负责赋值
     }
 
-    // --- 4. 辅助方法：生成状态 HTML (解决 GetStatusHtml 报错) ---
-    // 前端 <%# GetStatusHtml(Eval("Status")) %> 调用此方法
+    // --- 4. 辅助方法：生成状态 HTML (汉化版) ---
     public string GetStatusHtml(object statusObj)
     {
         if (statusObj == null || statusObj == DBNull.Value) return "";
 
         int status = Convert.ToInt32(statusObj);
 
-        // 0: 审核中 (Pending), 1: 已发布 (Published)
+        // 0: 审核中, 1: 已发布
         if (status == 1)
         {
-            return "<span class='badge badge-success'><i class='fas fa-check-circle'></i> Published</span>";
+            return "<span class='badge badge-success'><i class='fas fa-check-circle'></i> 已发布</span>";
         }
         else
         {
-            return "<span class='badge badge-warning'><i class='fas fa-hourglass-half'></i> Auditing</span>";
+            return "<span class='badge badge-warning'><i class='fas fa-hourglass-half'></i> 审核中</span>";
         }
     }
 
@@ -134,10 +124,7 @@ public partial class TeacherHome : System.Web.UI.Page
         }
         else if (e.CommandName == "Grade")
         {
-            // 获取课程名称用于显示 (可选)
-            GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
-            // 假设 CourseName 在第1列 (索引0)
-            // 如果用了 TemplateField，需要根据实际结构获取，这里简单传 ID 即可，TeacherGrade 会自己查
+            // 携带课程名称跳转 (虽然 TeacherGrade 会自己查，但 URL 好看点)
             Response.Redirect("TeacherGrade.aspx?cid=" + cid);
         }
     }
@@ -146,6 +133,7 @@ public partial class TeacherHome : System.Web.UI.Page
     protected void btnLogout_Click(object sender, EventArgs e)
     {
         Session.Clear();
+        Session.Abandon();
         Response.Redirect("Login.aspx");
     }
 }

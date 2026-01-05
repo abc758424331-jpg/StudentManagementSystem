@@ -1,263 +1,323 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="TeacherHome.aspx.cs" Inherits="TeacherHome" MaintainScrollPositionOnPostback="true" %>
 
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" data-theme="dark">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title>教师工作台 | 智慧教务中枢</title>
+    <title>教师工作台 | 智慧教务系统</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     
+    <script>
+        // === 1. 页面加载前立即同步主题，防止闪烁 ===
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
     <style>
-        /* === 1. 核心主题变量 === */
+        /* === 2. 教师版主题变量 (天际蓝/智慧蓝) === */
         :root {
-            --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --primary: #0ea5e9;       /* Sky Blue 500 */
+            --primary-hover: #0284c7; /* Sky Blue 600 */
+            --accent: #f59e0b;        /* Amber (用于待办提醒) */
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
+        /* 🌑 暗黑模式 */
         [data-theme="dark"] {
-            --bg-color: #0b1120;
-            --bg-gradient: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b1120 100%);
-            --glass-panel: rgba(30, 41, 59, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
             --text-sub: #94a3b8;
-            --primary: #0ea5e9; /* 天空蓝 */
-            --accent: #8b5cf6;  /* 紫色 */
-            --danger: #ef4444;
-            --warning: #f59e0b; /* 橙色 (用于审核中) */
-            --success: #10b981; /* 绿色 (用于已激活) */
-            --table-hover: rgba(14, 165, 233, 0.05);
+            --border: #334155;
+            --hover-bg: rgba(255,255,255,0.05);
+            --input-bg: #0f172a;
+        }
+
+        /* ☀️ 明亮模式 */
+        [data-theme="light"] {
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --hover-bg: #f8fafc;
+            --input-bg: #f8fafc;
         }
 
         body {
             margin: 0; padding: 0;
-            background: var(--bg-color); background-image: var(--bg-gradient);
-            color: var(--text-main); font-family: 'Inter', sans-serif;
-            overflow-x: hidden; min-height: 100vh;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Noto Sans SC', 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
         }
 
-        #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-        .fade-in { animation: fadeIn 0.8s var(--ease-smooth) forwards; opacity: 0; transform: translateY(20px); }
-        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        form { display: flex; flex-direction: column; min-height: 100vh; }
 
-        /* 导航栏 */
+        /* === 导航栏 === */
         .navbar {
-            height: 70px; padding: 0 40px;
-            background: var(--glass-panel); backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--glass-border);
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 40px; height: 64px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: var(--shadow);
+        }
+        .brand { font-size: 20px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .theme-toggle-btn { background: none; border: none; cursor: pointer; color: var(--text-sub); font-size: 18px; padding: 8px; border-radius: 50%; transition: all 0.2s; }
+        .theme-toggle-btn:hover { background-color: var(--hover-bg); color: var(--text-main); }
+        .btn-logout { color: #ef4444; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+        /* === 主内容区 === */
+        .main-content {
+            flex: 1; padding: 40px; max-width: 1400px; margin: 0 auto; width: 100%; box-sizing: border-box;
+        }
+        .page-header { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .page-title { font-size: 24px; font-weight: 700; margin: 0; color: var(--text-main); }
+        .page-subtitle { color: var(--text-sub); margin-top: 5px; font-size: 14px; }
+
+        /* === 数据卡片行 === */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px;
+        }
+        .stat-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
             display: flex; align-items: center; justify-content: space-between;
-            position: fixed; top: 0; width: 100%; z-index: 1000; box-sizing: border-box;
+            box-shadow: var(--shadow);
+            position: relative; overflow: hidden;
+            transition: all 0.3s;
         }
-        .brand {
-            font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 24px;
-            letter-spacing: 2px; color: var(--text-main); text-decoration: none;
-            display: flex; align-items: center; gap: 10px;
+
+        /* 快捷入口卡片样式 */
+        a.stat-card { text-decoration: none; cursor: pointer; }
+        a.stat-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+        /* 待办事项高亮样式 (当后端添加 .card-alert 类时生效) */
+        .stat-card.card-alert {
+            border-color: var(--accent);
+            background: rgba(245, 158, 11, 0.05);
         }
-        .brand i { color: var(--primary); }
-
-        .btn-logout {
-            background: transparent; border: 1px solid var(--danger); color: var(--danger);
-            padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: 0.3s;
-            font-size: 12px; letter-spacing: 1px; font-weight: 600;
+        .stat-card.card-alert .stat-icon-box { color: var(--accent); background: rgba(245, 158, 11, 0.15); }
+        .stat-card.card-alert .value { color: var(--accent); }
+        .stat-card.card-alert::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent);
         }
-        .btn-logout:hover { background: var(--danger); color: #fff; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
 
-        /* 主界面 */
-        .main-container { max-width: 1200px; margin: 110px auto 50px; padding: 0 20px; }
-
-        .welcome-header { margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
-        .welcome-header h1 { font-family: 'Rajdhani'; font-size: 42px; margin: 0; letter-spacing: 2px; }
-        .welcome-header p { color: var(--text-sub); margin-top: 5px; font-size: 16px; }
+        .stat-info h3 { margin: 0; font-size: 15px; color: var(--text-sub); font-weight: 500; }
+        .stat-info .value { font-size: 32px; font-weight: 700; color: var(--text-main); margin-top: 8px; font-family: 'Inter', sans-serif; }
+        .stat-info .link-text { font-size: 13px; color: var(--primary); margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; }
         
-        /* HUD 仪表盘 */
-        .dashboard-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 40px;
-        }
-        
-        .hud-card {
-            background: var(--glass-panel); border: 1px solid var(--glass-border);
-            border-radius: 16px; padding: 25px; display: flex; align-items: center; gap: 20px;
-            transition: 0.3s; cursor: pointer; text-decoration: none; position: relative; overflow: hidden;
-        }
-        .hud-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-        
-        /* 红色警报样式 (用于待办提醒) */
-        .card-alert { border-color: var(--danger) !important; box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
-        .card-alert .hud-icon { color: var(--danger) !important; animation: pulseRed 2s infinite; }
-        .card-alert .value { color: var(--danger) !important; }
-        @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        .hud-icon {
-            width: 60px; height: 60px; border-radius: 16px; background: rgba(255,255,255,0.05);
-            display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--text-sub);
-        }
-        .hud-info h4 { margin: 0; font-size: 12px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; }
-        .hud-info .value { font-family: 'Rajdhani'; font-size: 36px; font-weight: 700; color: var(--text-main); display: block; margin-top: 5px; }
-
-        /* 课程列表 */
-        .section-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .section-title { font-family: 'Rajdhani'; font-size: 24px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-        
-        .cyber-select {
-            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: var(--text-main);
-            padding: 8px 15px; border-radius: 6px; outline: none; cursor: pointer; min-width: 150px;
+        .stat-icon-box {
+            width: 48px; height: 48px; border-radius: 10px;
+            background: rgba(14, 165, 233, 0.1); color: var(--primary);
+            display: flex; align-items: center; justify-content: center; font-size: 24px;
         }
 
-        .grid-container {
-            background: var(--glass-panel); border: 1px solid var(--glass-border);
-            border-radius: 16px; overflow: hidden; min-height: 300px;
+        /* === 表格区域 === */
+        .table-section {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
+            box-shadow: var(--shadow);
         }
-        .cyber-grid { width: 100%; border-collapse: collapse; }
-        .cyber-grid th {
-            background: rgba(0,0,0,0.2); color: var(--text-sub); padding: 20px; text-align: left;
-            font-size: 12px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);
+        .table-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
         }
-        .cyber-grid td {
-            padding: 20px; color: var(--text-main); border-bottom: 1px solid var(--glass-border);
-            font-size: 14px; vertical-align: middle;
+        .table-title { font-size: 18px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+
+        /* 下拉框样式 */
+        .filter-box { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-sub); }
+        .form-select {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px; border-radius: 6px;
+            font-family: inherit; font-size: 14px;
+            outline: none; cursor: pointer;
         }
-        .cyber-grid tr:hover td { background: var(--table-hover); }
+        .form-select:focus { border-color: var(--primary); }
+
+        /* GridView */
+        .custom-grid { width: 100%; border-collapse: collapse; color: var(--text-main); }
+        .custom-grid th {
+            text-align: left; padding: 14px 16px;
+            color: var(--text-sub); font-size: 13px; font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+        .custom-grid td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+        .custom-grid tr:last-child td { border-bottom: none; }
+        .custom-grid tr:hover { background-color: var(--hover-bg); }
 
         /* 状态徽章 */
-        .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
-        .badge-active { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
-        .badge-pending { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
 
-        /* 操作按钮 */
-        .btn-action {
-            padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;
-            transition: 0.2s; border: none; margin-right: 5px; color: #fff;
+        /* 表格操作按钮 */
+        .btn-icon {
+            text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; border: 1px solid transparent;
         }
-        .btn-config { background: rgba(139, 92, 246, 0.2); color: var(--accent); border: 1px solid var(--accent); }
-        .btn-config:hover { background: var(--accent); color: #fff; }
+        .btn-config { background: var(--hover-bg); color: var(--text-sub); border-color: var(--border); }
+        .btn-config:hover { border-color: var(--text-sub); color: var(--text-main); }
         
-        .btn-grade { background: rgba(14, 165, 233, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+        .btn-grade { background: rgba(14, 165, 233, 0.1); color: var(--primary); border-color: rgba(14, 165, 233, 0.2); }
         .btn-grade:hover { background: var(--primary); color: #fff; }
 
-        .btn-new-course {
-            text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
-            background: var(--primary); color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;
-            box-shadow: 0 0 15px rgba(14, 165, 233, 0.4); transition: 0.3s;
+        .btn-create {
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+            transition: transform 0.2s;
         }
-        .btn-new-course:hover { transform: translateY(-2px); box-shadow: 0 0 25px rgba(14, 165, 233, 0.6); }
+        .btn-create:hover { transform: translateY(-2px); }
+
     </style>
 </head>
 <body>
-    <canvas id="particle-canvas"></canvas>
-
     <form id="form1" runat="server">
-    
-    <div class="navbar fade-in">
-        <a href="#" class="brand">
-            <i class="fas fa-chalkboard-teacher"></i> TEACHER <span style="font-weight:300; opacity:0.6; font-size:14px; margin-left:5px;">CONSOLE</span>
-        </a>
-        <asp:Button ID="btnLogout" runat="server" Text="LOGOUT" OnClick="btnLogout_Click" CssClass="btn-logout" />
-    </div>
-
-    <div class="main-container fade-in">
-        
-        <div class="welcome-header">
-            <div>
-                <h1>WELCOME, <span style="color:var(--primary);"><asp:Label ID="lblName" runat="server"></asp:Label></span></h1>
-                <p>System Online. Manage your courses and grading protocols.</p>
-            </div>
-            <div>
-                <a href="CourseApply.aspx" class="btn-new-course">
-                    <i class="fas fa-plus-circle"></i> NEW COURSE APPLICATION
-                </a>
-            </div>
-        </div>
-
-        <div class="dashboard-grid">
-            <div class="hud-card">
-                <div class="hud-icon"><i class="fas fa-book-open"></i></div>
-                <div class="hud-info"><h4>My Courses</h4><asp:Literal ID="ltlCourseCount" runat="server">0</asp:Literal></div>
-            </div>
-            <div class="hud-card">
-                <div class="hud-icon"><i class="fas fa-user-graduate"></i></div>
-                <div class="hud-info"><h4>Total Students</h4><asp:Literal ID="ltlStudentCount" runat="server">0</asp:Literal></div>
+        <nav class="navbar">
+            <div class="brand">
+                <i class="fas fa-chalkboard-teacher"></i> 教师工作台
             </div>
             
-            <asp:Panel ID="pnlTodo" runat="server" CssClass="hud-card">
-                <a href="RetakeManage.aspx" style="text-decoration:none; width:100%; height:100%; display:flex; align-items:center; gap:20px;">
-                    <div class="hud-icon"><i class="fas fa-tasks"></i></div>
-                    <div class="hud-info">
-                        <h4>Retake Requests</h4>
-                        <span class="value"><asp:Literal ID="ltlTodoCount" runat="server">0</asp:Literal></span>
-                    </div>
+            <div class="nav-right">
+                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">
+                    <i class="fas fa-adjust" id="themeIcon"></i>
+                </button>
+
+                <div style="display:flex; align-items:center; gap:20px; font-size:14px;">
+                    <span style="color:var(--text-sub);">
+                        欢迎您，<asp:Label ID="lblName" runat="server" style="color:var(--text-main); font-weight:600;"></asp:Label> 老师
+                    </span>
+                    <span style="color:var(--border);">|</span>
+                    <asp:LinkButton ID="btnLogout" runat="server" OnClick="btnLogout_Click" CssClass="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </asp:LinkButton>
+                </div>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">教学管理概览</h1>
+                    <p class="page-subtitle">管理您的课程、学生成绩及审批事项</p>
+                </div>
+                <a href="CourseApply.aspx" class="btn-create">
+                    <i class="fas fa-plus-circle"></i> 申报新课程
                 </a>
-            </asp:Panel>
-        </div>
+            </div>
 
-        <div class="section-header">
-            <div class="section-title"><i class="fas fa-layer-group"></i> COURSE MANAGEMENT</div>
-            <asp:DropDownList ID="ddlTerm" runat="server" CssClass="cyber-select" AutoPostBack="true" OnSelectedIndexChanged="ddlTerm_SelectedIndexChanged">
-            </asp:DropDownList>
-        </div>
-
-        <div class="grid-container">
-            <asp:GridView ID="gvMyCourses" runat="server" AutoGenerateColumns="False" 
-                DataKeyNames="CourseId" CssClass="cyber-grid" GridLines="None"
-                OnRowCommand="gvMyCourses_RowCommand">
-                <Columns>
-                    <asp:BoundField DataField="CourseName" HeaderText="COURSE NAME" ItemStyle-Font-Bold="true" />
-                    <asp:BoundField DataField="Credit" HeaderText="CREDIT" ItemStyle-HorizontalAlign="Center" />
-                    <asp:BoundField DataField="MaxCapacity" HeaderText="CAPACITY" ItemStyle-HorizontalAlign="Center" />
-                    
-                    <%-- [关键新增] 审批状态列 --%>
-                    <asp:TemplateField HeaderText="STATUS" ItemStyle-HorizontalAlign="Center">
-                        <ItemTemplate>
-                            <%# GetStatusHtml(Eval("Status")) %>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 操作列 (智能显示) --%>
-                    <asp:TemplateField HeaderText="ACTIONS" ItemStyle-HorizontalAlign="Right">
-                        <ItemTemplate>
-                            <asp:Panel ID="pnlActions" runat="server" Visible='<%# Convert.ToInt32(Eval("Status")) == 1 %>'>
-                                <asp:Button ID="btnConfig" runat="server" Text="CONFIG" 
-                                    CommandName="Config" CommandArgument='<%# Eval("CourseId") %>'
-                                    CssClass="btn-action btn-config" ToolTip="Set Weights" />
-                                
-                                <asp:Button ID="btnGrade" runat="server" Text="GRADE" 
-                                    CommandName="Grade" CommandArgument='<%# Eval("CourseId") %>'
-                                    CssClass="btn-action btn-grade" ToolTip="Enter Grades" />
-                            </asp:Panel>
-                            
-                            <asp:Label ID="lblWait" runat="server" Text="WAITING ADMIN..." 
-                                Visible='<%# Convert.ToInt32(Eval("Status")) == 0 %>'
-                                style="font-size:12px; color:var(--text-sub); font-style:italic; letter-spacing:1px;">
-                            </asp:Label>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-                </Columns>
-                <EmptyDataTemplate>
-                    <div style="padding:60px; text-align:center; color:var(--text-sub);">
-                        <i class="fas fa-folder-open" style="font-size:40px; margin-bottom:15px; opacity:0.5;"></i>
-                        <p>No courses found for this term.</p>
+            <div class="stats-row">
+                <asp:Panel ID="pnlTodo" runat="server" CssClass="stat-card">
+                    <div class="stat-info">
+                        <h3>待审批补考</h3>
+                        <div class="value"><asp:Literal ID="ltlTodoCount" runat="server" Text="0"></asp:Literal></div>
+                        <a href="RetakeManage.aspx" class="link-text">
+                            前往审批 <i class="fas fa-arrow-right" style="font-size:12px;"></i>
+                        </a>
                     </div>
-                </EmptyDataTemplate>
-            </asp:GridView>
-        </div>
+                    <div class="stat-icon-box"><i class="fas fa-bell"></i></div>
+                </asp:Panel>
 
-    </div>
+                <a href="CourseApply.aspx" class="stat-card">
+                    <div class="stat-info">
+                        <h3>新课申报</h3>
+                        <div class="link-text" style="color:var(--text-sub);">点击提交下学期计划</div>
+                    </div>
+                    <div class="stat-icon-box"><i class="fas fa-file-signature"></i></div>
+                </a>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3>当前学期</h3>
+                        <div class="value" style="font-size:20px;">2025-2026-1</div>
+                    </div>
+                    <div class="stat-icon-box"><i class="fas fa-calendar-alt"></i></div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="table-header">
+                    <div class="table-title">
+                        <i class="fas fa-book" style="color:var(--primary);"></i> 我的授课列表
+                    </div>
+                    <div class="filter-box">
+                        <i class="fas fa-filter"></i>
+                        <asp:DropDownList ID="ddlTerm" runat="server" CssClass="form-select" AutoPostBack="true" OnSelectedIndexChanged="ddlTerm_SelectedIndexChanged">
+                        </asp:DropDownList>
+                    </div>
+                </div>
+
+                <asp:GridView ID="gvMyCourses" runat="server" CssClass="custom-grid" AutoGenerateColumns="False" 
+                    OnRowCommand="gvMyCourses_RowCommand" GridLines="None" EmptyDataText="当前学期暂无课程">
+                    <Columns>
+                        <asp:BoundField DataField="CourseName" HeaderText="课程名称" />
+                        <asp:BoundField DataField="Credit" HeaderText="学分" ItemStyle-Width="80px" ItemStyle-HorizontalAlign="Center" HeaderStyle-HorizontalAlign="Center" />
+                        
+                        <asp:TemplateField HeaderText="选课人数 / 容量">
+                            <ItemTemplate>
+                                <%# Eval("StudentCount") %> / <%# Eval("MaxCapacity") %>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+
+                        <asp:TemplateField HeaderText="状态">
+                            <ItemTemplate>
+                                <%# GetStatusHtml(Eval("Status")) %>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+
+                        <asp:TemplateField HeaderText="管理操作" ItemStyle-Width="220px">
+                            <ItemTemplate>
+                                <asp:LinkButton runat="server" CommandName="Config" CommandArgument='<%# Eval("CourseId") %>' CssClass="btn-icon btn-config">
+                                    <i class="fas fa-cog"></i> 权重设置
+                                </asp:LinkButton>
+                                <asp:LinkButton runat="server" CommandName="Grade" CommandArgument='<%# Eval("CourseId") %>' CssClass="btn-icon btn-grade">
+                                    <i class="fas fa-edit"></i> 录入成绩
+                                </asp:LinkButton>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                    </Columns>
+                    <EmptyDataTemplate>
+                        <div style="padding:40px; text-align:center; color:var(--text-sub);">
+                            <i class="fas fa-inbox" style="font-size:32px; margin-bottom:10px; opacity:0.5;"></i>
+                            <p>您在所选学期暂未开设任何课程。</p>
+                        </div>
+                    </EmptyDataTemplate>
+                </asp:GridView>
+            </div>
+
+        </div>
     </form>
 
     <script>
-        // === 粒子特效 (复用) ===
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, particles = [];
+        // === 主题切换逻辑 (与 Default.aspx 保持一致) ===
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
 
-        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-        class Particle {
-            constructor() { this.x = Math.random() * width; this.y = Math.random() * height; this.vx = (Math.random() - .5) * 0.5; this.vy = (Math.random() - .5) * 0.5; this.size = Math.random() * 2; }
-            update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > width) this.vx *= -1; if (this.y < 0 || this.y > height) this.vy *= -1; }
-            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = 'rgba(14, 165, 233, 0.3)'; ctx.fill(); }
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('theme', target);
+            updateIcon(target);
         }
-        function init() { particles = []; for (let i = 0; i < 60; i++) particles.push(new Particle()); }
-        function animate() { ctx.clearRect(0, 0, width, height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animate); }
 
-        window.addEventListener('resize', () => { resize(); init(); }); resize(); init(); animate();
+        function updateIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (icon) icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+
+        // 初始化图标
+        const saved = localStorage.getItem('theme') || 'dark';
+        updateIcon(saved);
     </script>
 </body>
 </html>

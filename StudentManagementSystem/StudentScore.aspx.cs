@@ -4,7 +4,7 @@ using System.Data.SqlClient;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
-// 抑制 IDE1006 命名规则警告，兼容 WebForms 事件命名
+// 抑制命名警告
 #pragma warning disable IDE1006
 
 public partial class StudentScore : System.Web.UI.Page
@@ -37,10 +37,10 @@ public partial class StudentScore : System.Web.UI.Page
         ddlTerm.DataValueField = "Term";
         ddlTerm.DataBind();
 
-        // 如果没有数据，显示提示
+        // 如果没有数据
         if (ddlTerm.Items.Count == 0)
         {
-            ddlTerm.Items.Insert(0, new ListItem("No Records", "0"));
+            ddlTerm.Items.Insert(0, new ListItem("暂无成绩记录", "0"));
             ddlTerm.Enabled = false;
         }
     }
@@ -53,7 +53,7 @@ public partial class StudentScore : System.Web.UI.Page
         string uid = Session["UserId"].ToString();
         string term = ddlTerm.SelectedValue;
 
-        // 联表查询：成绩信息 + 课程信息 + 教师信息
+        // 联表查询
         string sql = @"
             SELECT s.ScoreId, s.Score, s.Term, s.RetakeStatus,
                    c.CourseName, c.Credit, c.CourseType,
@@ -71,10 +71,11 @@ public partial class StudentScore : System.Web.UI.Page
         gvScores.DataSource = dt;
         gvScores.DataBind();
 
+        // 计算并显示当学期统计数据
         CalculateTermStats(dt);
     }
 
-    // --- 3. 计算学期统计数据 (平均分/总学分) ---
+    // --- 3. 计算学期统计 (平均分/学分) ---
     private void CalculateTermStats(DataTable dt)
     {
         double totalScore = 0;
@@ -83,7 +84,6 @@ public partial class StudentScore : System.Web.UI.Page
 
         foreach (DataRow dr in dt.Rows)
         {
-            // 解析分数
             double score;
             if (double.TryParse(dr["Score"].ToString(), out score))
             {
@@ -110,23 +110,42 @@ public partial class StudentScore : System.Web.UI.Page
         ltlTermCredit.Text = totalCredit.ToString("F1");
     }
 
-    // --- 4. 事件处理 ---
+    // --- 4. 辅助：生成状态徽章 HTML (供前端调用) ---
+    public string GetScoreStatusHtml(object scoreObj, object retakeObj)
+    {
+        double score = Convert.ToDouble(scoreObj);
+        int retake = Convert.ToInt32(retakeObj);
 
-    // 学期筛选改变
+        if (score >= 60)
+        {
+            return "<span class='badge badge-success'><i class='fas fa-check'></i> 及格</span>";
+        }
+        else
+        {
+            // 不及格情况
+            if (retake == 2) return "<span class='badge badge-warning'>补考审批中</span>";
+            if (retake == 3) return "<span class='badge badge-info'>重修安排中</span>";
+
+            // 纯挂科
+            return "<span class='badge badge-danger'><i class='fas fa-times'></i> 不及格</span>";
+        }
+    }
+
+    // --- 5. 事件处理 ---
+
     protected void ddlTerm_SelectedIndexChanged(object sender, EventArgs e)
     {
         BindData();
     }
 
-    // 表格行命令 (处理重修/补考申请)
+    // 处理补考申请
     protected void gvScores_RowCommand(object sender, GridViewCommandEventArgs e)
     {
         if (e.CommandName == "ApplyRetake")
         {
             int scoreId = Convert.ToInt32(e.CommandArgument);
 
-            // 更新状态为 2 (已申请)
-            // RetakeStatus: 0=正常, 1=需补考, 2=已申请, 3=已批准
+            // RetakeStatus: 2 = 已申请
             string sql = "UPDATE Scores SET RetakeStatus = 2 WHERE ScoreId = @id";
 
             try
@@ -135,45 +154,48 @@ public partial class StudentScore : System.Web.UI.Page
 
                 BindData(); // 刷新界面
 
-                ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('✅ Retake application submitted.');", true);
+                // 弹窗提示
+                System.Web.UI.ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('✅ 补考申请已提交，请等待教师审批。');", true);
             }
             catch (Exception ex)
             {
-                string err = ex.Message.Replace("'", "");
-                string js = string.Format("alert('❌ Error: {0}');", err);
-                ScriptManager.RegisterStartupScript(this, GetType(), "alert", js, true);
+                string msg = string.Format("alert('❌ 申请失败: {0}');", ex.Message.Replace("'", ""));
+                System.Web.UI.ScriptManager.RegisterStartupScript(this, GetType(), "alert", msg, true);
             }
         }
     }
 
-    // 行数据绑定 (智能控制按钮显示)
+    // 控制按钮显示 (RowDataBound)
     protected void gvScores_RowDataBound(object sender, GridViewRowEventArgs e)
     {
         if (e.Row.RowType == DataControlRowType.DataRow)
         {
-            // 获取数据
-            object scoreObj = DataBinder.Eval(e.Row.DataItem, "Score");
-            object retakeObj = DataBinder.Eval(e.Row.DataItem, "RetakeStatus");
+            double score = Convert.ToDouble(DataBinder.Eval(e.Row.DataItem, "Score"));
+            int status = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "RetakeStatus"));
 
-            double score = 0;
-            double.TryParse(scoreObj.ToString(), out score);
-            int status = Convert.ToInt32(retakeObj);
+            // 查找按钮
+            LinkButton btn = (LinkButton)e.Row.FindControl("btnRetake");
 
-            // 查找按钮 (确保前端 GridView 中 Button 的 ID 为 btnRetake)
-            Button btnRetake = (Button)e.Row.FindControl("btnRetake");
-
-            if (btnRetake != null)
+            if (btn != null)
             {
-                // 只有不及格 (<60) 且 未申请 (Status!=2) 且 未通过 (Status!=3) 才显示按钮
+                // 显示条件：分数<60 且 未申请(status!=2) 且 未批准(status!=3)
                 if (score < 60 && status != 2 && status != 3)
                 {
-                    btnRetake.Visible = true;
+                    btn.Visible = true;
                 }
                 else
                 {
-                    btnRetake.Visible = false;
+                    btn.Visible = false;
                 }
             }
         }
+    }
+
+    // 注销
+    protected void btnLogout_Click(object sender, EventArgs e)
+    {
+        Session.Clear();
+        Session.Abandon();
+        Response.Redirect("Login.aspx");
     }
 }

@@ -33,7 +33,7 @@ public partial class Login : System.Web.UI.Page
         // 3. 基础非空校验
         if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pwd))
         {
-            lblMsg.Text = "⚠️ Please enter ID and Password.";
+            lblMsg.Text = "⚠️ 请输入账号和密码";
             return;
         }
 
@@ -54,7 +54,7 @@ public partial class Login : System.Web.UI.Page
             }
             else if (role == "Admin")
             {
-                // 管理员：假设表名为 Admins，字段为 Username
+                // 管理员：查询 Admins 表 (如果没有该表，下方 catch 会捕获)
                 sql = "SELECT * FROM Admins WHERE Username=@u AND Password=@p";
             }
 
@@ -83,7 +83,7 @@ public partial class Login : System.Web.UI.Page
                 }
                 else // Admin
                 {
-                    Session["User"] = "Administrator"; // 管理员通常没有昵称字段
+                    Session["User"] = "管理员";
                     Session["UserId"] = "1";
                     Response.Redirect("Default.aspx");
                 }
@@ -91,19 +91,19 @@ public partial class Login : System.Web.UI.Page
             else
             {
                 // 登录失败
-                lblMsg.Text = "❌ Access Denied: Invalid ID or Password.";
+                lblMsg.Text = "❌ 登录失败：账号或密码错误";
             }
         }
         catch (Exception ex)
         {
-            // 错误处理：如果数据库中缺少 Admins 表，给予提示
+            // 错误处理：如果数据库中缺少 Admins 表，给予明确提示
             if (role == "Admin" && ex.Message.Contains("Admins"))
             {
-                lblMsg.Text = "❌ Error: Table 'Admins' missing in database.";
+                lblMsg.Text = "❌ 配置错误：数据库中缺少 'Admins' 表，请联系管理员。";
             }
             else
             {
-                lblMsg.Text = "❌ System Error: " + ex.Message;
+                lblMsg.Text = "❌ 系统错误：" + ex.Message;
             }
         }
     }

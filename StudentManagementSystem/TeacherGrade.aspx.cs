@@ -1,202 +1,172 @@
 ﻿using System;
 using System.Data;
 using System.Data.SqlClient;
-using System.Web.UI;             // 必须引用，解决 DataBinder 问题
+using System.Web.UI;
 using System.Web.UI.WebControls;
-using System.Drawing;
+
+// 抑制 IDE 命名警告
+#pragma warning disable IDE1006
 
 public partial class TeacherGrade : System.Web.UI.Page
 {
-    // 全局变量暂存权重
-    protected double wReg = 0, wHwk = 0, wMid = 0, wFin = 0;
-
     protected void Page_Load(object sender, EventArgs e)
     {
+        // 1. 身份验证
         if (Session["Role"] == null || Session["Role"].ToString() != "Teacher")
             Response.Redirect("Login.aspx");
 
-        if (Request.QueryString["cid"] != null)
-        {
-            string cid = Request.QueryString["cid"];
-            LoadWeights(cid);
-        }
-
         if (!IsPostBack)
         {
+            // 获取 URL 参数中的 CourseId
             if (Request.QueryString["cid"] != null)
             {
                 string cid = Request.QueryString["cid"];
-                string cname = Request.QueryString["cname"] ?? "Course";
-
-                lblCourseId.Text = cid;
-                lblCourseName.Text = cname;
-
-                LoadStudents(cid);
+                LoadCourseInfo(cid);
+                BindStudentList(cid);
+            }
+            else
+            {
+                // 如果没有参数，非法访问，跳回主页
+                Response.Redirect("TeacherHome.aspx");
             }
         }
     }
 
-    private void LoadWeights(string cid)
+    // --- 1. 加载课程基本信息 (防止教师不知道在给哪门课打分) ---
+    private void LoadCourseInfo(string cid)
     {
-        string sql = "SELECT WeightRegular, WeightHomework, WeightMidterm, WeightFinal FROM Courses WHERE CourseId = @cid";
+        string sql = "SELECT CourseName, Semester FROM Courses WHERE CourseId = @cid";
         DataTable dt = SqlHelper.ExecuteQuery(sql, new SqlParameter("@cid", cid));
 
         if (dt.Rows.Count > 0)
         {
-            DataRow dr = dt.Rows[0];
-
-            lblWReg.Text = dr["WeightRegular"].ToString();
-            lblWHwk.Text = dr["WeightHomework"].ToString();
-            lblWMid.Text = dr["WeightMidterm"].ToString();
-            lblWFin.Text = dr["WeightFinal"].ToString();
-
-            double.TryParse(dr["WeightRegular"].ToString(), out wReg); wReg /= 100;
-            double.TryParse(dr["WeightHomework"].ToString(), out wHwk); wHwk /= 100;
-            double.TryParse(dr["WeightMidterm"].ToString(), out wMid); wMid /= 100;
-            double.TryParse(dr["WeightFinal"].ToString(), out wFin); wFin /= 100;
+            // 给前端控件赋值，确保信息展示出来
+            lblCourseName.Text = dt.Rows[0]["CourseName"].ToString();
+            lblTerm.Text = dt.Rows[0]["Semester"].ToString();
+        }
+        else
+        {
+            // 课程不存在
+            ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('❌ 课程未找到！');window.location='TeacherHome.aspx';", true);
         }
     }
 
-    private void LoadStudents(string cid)
+    // --- 2. 加载学生列表 ---
+    private void BindStudentList(string cid)
     {
+        // 关联 Scores 和 Students 表，获取该课程下的所有学生及其当前成绩
+        // 逻辑自查：确保显示学号和姓名，方便核对
         string sql = @"
             SELECT 
-                s.ScoreId, 
-                stu.StuNumber, 
-                stu.Name, 
-                ISNULL(s.ScoreRegular, 0) as ScoreRegular, 
-                ISNULL(s.ScoreHomework, 0) as ScoreHomework, 
-                ISNULL(s.ScoreMidterm, 0) as ScoreMidterm, 
-                ISNULL(s.ScoreFinal, 0) as ScoreFinal, 
-                ISNULL(s.Score, 0) as Score,
-                ISNULL(s.IsLocked, 0) as IsLocked 
+                s.ScoreId,
+                st.StuNumber, 
+                st.Name, 
+                s.Score 
             FROM Scores s
-            JOIN Students stu ON s.StudentId = stu.StudentId
+            JOIN Students st ON s.StudentId = st.StudentId
             WHERE s.CourseId = @cid
-            ORDER BY stu.StuNumber ASC";
+            ORDER BY st.StuNumber ASC";
 
         DataTable dt = SqlHelper.ExecuteQuery(sql, new SqlParameter("@cid", cid));
-        gvGrades.DataSource = dt;
-        gvGrades.DataBind();
+        gvStudents.DataSource = dt;
+        gvStudents.DataBind();
     }
 
-    // --- [修复] 方法名首字母大写，符合规范 ---
-    protected void GvGrades_RowDataBound(object sender, GridViewRowEventArgs e)
+    // --- 3. 批量保存成绩 ---
+    protected void btnSave_Click(object sender, EventArgs e)
     {
-        if (e.Row.RowType == DataControlRowType.DataRow)
+        int successCount = 0;
+        string errorMsg = "";
+
+        // 遍历 GridView 的每一行进行保存
+        foreach (GridViewRow row in gvStudents.Rows)
         {
-            TextBox tReg = (TextBox)e.Row.FindControl("txtReg");
-            TextBox tHwk = (TextBox)e.Row.FindControl("txtHwk");
-            TextBox tMid = (TextBox)e.Row.FindControl("txtMid");
-            TextBox tFin = (TextBox)e.Row.FindControl("txtFin");
-            Button btn = (Button)e.Row.FindControl("btnSaveOne");
-
-            // [修复] 使用完整命名空间 System.Web.UI.DataBinder
-            int isLocked = Convert.ToInt32(System.Web.UI.DataBinder.Eval(e.Row.DataItem, "IsLocked"));
-
-            if (isLocked == 1)
+            if (row.RowType == DataControlRowType.DataRow)
             {
-                DisableInputs(tReg, tHwk, tMid, tFin);
-                btn.Text = "UNLOCK REQUEST";
-                btn.CommandName = "RequestUnlock";
-                btn.CssClass = "btn-row-save";
-                btn.Style.Add("border-color", "#f59e0b");
-                btn.Style.Add("color", "#f59e0b");
-                btn.Style.Add("background", "rgba(245, 158, 11, 0.1)");
+                // 获取控件 (对应前端 ItemTemplate)
+                HiddenField hfScoreId = (HiddenField)row.FindControl("hfScoreId");
+                TextBox txtScore = (TextBox)row.FindControl("txtScore");
+                Label lblName = (Label)row.FindControl("lblName"); // 用于报错时指出是谁
+
+                if (hfScoreId != null && txtScore != null)
+                {
+                    string scoreText = txtScore.Text.Trim();
+                    int scoreId = Convert.ToInt32(hfScoreId.Value);
+
+                    // 逻辑自查：如果是空值，则跳过不更新 (防止误删成绩)
+                    // 如果需要删除成绩，通常需要专门的“重置”功能，防止手误
+                    if (string.IsNullOrEmpty(scoreText))
+                    {
+                        continue;
+                    }
+
+                    // A. 数字格式验证
+                    double scoreVal;
+                    if (!double.TryParse(scoreText, out scoreVal))
+                    {
+                        errorMsg += string.Format("【{0}】分数格式错误; ", lblName.Text);
+                        continue;
+                    }
+
+                    // B. 逻辑范围验证 (防止 -10 或 1000 分)
+                    if (scoreVal < 0 || scoreVal > 100)
+                    {
+                        errorMsg += string.Format("【{0}】分数必须在 0-100 之间; ", lblName.Text);
+                        continue;
+                    }
+
+                    // C. 更新数据库
+                    // 注意：更新成绩时，将 RetakeStatus 重置为 0，
+                    // 逻辑：因为如果是补考后录入成绩，此时应该视为“已完结”，或者是新的正常成绩
+                    string sql = "UPDATE Scores SET Score = @sc, RetakeStatus = 0 WHERE ScoreId = @id";
+
+                    try
+                    {
+                        SqlHelper.ExecuteNonQuery(sql,
+                            new SqlParameter("@sc", scoreVal),
+                            new SqlParameter("@id", scoreId));
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMsg += "数据库错误: " + ex.Message + "; ";
+                    }
+                }
             }
-            else if (isLocked == 2)
-            {
-                DisableInputs(tReg, tHwk, tMid, tFin);
-                btn.Text = "WAITING ADMIN";
-                btn.Enabled = false;
-                btn.CssClass = "btn-row-save";
-                btn.Style.Add("border-color", "#64748b");
-                btn.Style.Add("color", "#64748b");
-            }
-            else
-            {
-                if (wReg <= 0) LockZeroWeight(tReg);
-                if (wHwk <= 0) LockZeroWeight(tHwk);
-                if (wMid <= 0) LockZeroWeight(tMid);
-                if (wFin <= 0) LockZeroWeight(tFin);
-            }
+        }
+
+        // 保存后重新加载数据，刷新界面显示
+        if (Request.QueryString["cid"] != null)
+        {
+            BindStudentList(Request.QueryString["cid"]);
+        }
+
+        // D. 结果反馈
+        if (!string.IsNullOrEmpty(errorMsg))
+        {
+            // 有错误发生
+            string js = string.Format("alert('⚠️ 部分保存失败：\\n{0}');", errorMsg.Replace("'", ""));
+            ScriptManager.RegisterStartupScript(this, GetType(), "alert", js, true);
+        }
+        else
+        {
+            // 全部成功
+            string js = string.Format("alert('✅ 批量操作完成！\\n成功保存 {0} 条成绩记录。');", successCount);
+            ScriptManager.RegisterStartupScript(this, GetType(), "alert", js, true);
         }
     }
 
-    private void DisableInputs(params TextBox[] txts)
+    // --- 返回按钮 ---
+    protected void btnBack_Click(object sender, EventArgs e)
     {
-        foreach (var t in txts)
-        {
-            t.Enabled = false;
-            t.CssClass += " disabled";
-        }
+        Response.Redirect("TeacherHome.aspx");
     }
 
-    private void LockZeroWeight(TextBox t)
+    // --- 注销 ---
+    protected void btnLogout_Click(object sender, EventArgs e)
     {
-        t.Enabled = false;
-        t.CssClass += " disabled";
-        t.Text = "0";
-    }
-
-    // --- [修复] 方法名首字母大写 ---
-    protected void GvGrades_RowCommand(object sender, GridViewCommandEventArgs e)
-    {
-        int rowIndex = Convert.ToInt32(e.CommandArgument);
-        int scoreId = Convert.ToInt32(gvGrades.DataKeys[rowIndex].Value);
-        string cid = Request.QueryString["cid"];
-
-        if (e.CommandName == "SaveOne")
-        {
-            GridViewRow row = gvGrades.Rows[rowIndex];
-            TextBox tReg = (TextBox)row.FindControl("txtReg");
-            TextBox tHwk = (TextBox)row.FindControl("txtHwk");
-            TextBox tMid = (TextBox)row.FindControl("txtMid");
-            TextBox tFin = (TextBox)row.FindControl("txtFin");
-
-            double reg = ParseScore(tReg.Text);
-            double hwk = ParseScore(tHwk.Text);
-            double mid = ParseScore(tMid.Text);
-            double fin = ParseScore(tFin.Text);
-
-            double total = (reg * wReg) + (hwk * wHwk) + (mid * wMid) + (fin * wFin);
-            total = Math.Round(total, 1);
-
-            string sql = @"UPDATE Scores SET 
-                           ScoreRegular=@r, ScoreHomework=@h, ScoreMidterm=@m, ScoreFinal=@f, Score=@t,
-                           IsLocked = 1 
-                           WHERE ScoreId=@id";
-
-            SqlHelper.ExecuteNonQuery(sql,
-                new SqlParameter("@r", reg),
-                new SqlParameter("@h", hwk),
-                new SqlParameter("@m", mid),
-                new SqlParameter("@f", fin),
-                new SqlParameter("@t", total),
-                new SqlParameter("@id", scoreId));
-
-            LoadStudents(cid);
-            System.Web.UI.ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('✅ Grade Saved & Locked! Contact Admin to modify.');", true);
-        }
-        else if (e.CommandName == "RequestUnlock")
-        {
-            string sql = "UPDATE Scores SET IsLocked = 2 WHERE ScoreId = @id";
-            SqlHelper.ExecuteNonQuery(sql, new SqlParameter("@id", scoreId));
-
-            LoadStudents(cid);
-            System.Web.UI.ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('📨 Unlock Request Sent to Admin!');", true);
-        }
-    }
-
-    private double ParseScore(string text)
-    {
-        double val;
-        if (double.TryParse(text, out val))
-        {
-            if (val < 0) return 0;
-            if (val > 100) return 100;
-            return val;
-        }
-        return 0;
+        Session.Clear();
+        Session.Abandon();
+        Response.Redirect("Login.aspx");
     }
 }

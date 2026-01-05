@@ -1,211 +1,313 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="TeacherGrade.aspx.cs" Inherits="TeacherGrade" MaintainScrollPositionOnPostback="true" %>
 
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" data-theme="dark">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title>成绩录入 | 智慧教务中枢</title>
+    <title>成绩录入控制台 | 智慧教务系统</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     
+    <script>
+        // === 1. 主题同步脚本 ===
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
     <style>
-        /* === 1. 核心主题变量 === */
-        :root { --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        /* === 2. 教师版主题 (天际蓝) === */
+        :root {
+            --primary: #0ea5e9;       /* Sky Blue */
+            --primary-hover: #0284c7;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
         [data-theme="dark"] {
-            --bg-color: #0b1120;
-            --bg-gradient: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b1120 100%);
-            --glass-panel: rgba(30, 41, 59, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
             --text-sub: #94a3b8;
-            --primary: #0ea5e9;
-            --accent: #8b5cf6;
-            --success: #10b981; 
-            --table-hover: rgba(14, 165, 233, 0.05);
+            --border: #334155;
+            --hover-bg: rgba(255,255,255,0.05);
+            --input-bg: #0f172a;
+        }
+
+        [data-theme="light"] {
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --hover-bg: #f8fafc;
+            --input-bg: #f8fafc;
         }
 
         body {
             margin: 0; padding: 0;
-            background: var(--bg-color); background-image: var(--bg-gradient);
-            color: var(--text-main); font-family: 'Inter', sans-serif;
-            overflow-x: hidden; min-height: 100vh;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Noto Sans SC', 'Inter', sans-serif;
+            transition: background-color 0.3s;
         }
 
-        #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        form { display: flex; flex-direction: column; min-height: 100vh; }
 
-        /* 导航 */
+        /* 导航栏 */
         .navbar {
-            height: 70px; padding: 0 40px;
-            background: var(--glass-panel); border-bottom: 1px solid var(--glass-border);
-            display: flex; align-items: center; justify-content: space-between;
-            position: fixed; top: 0; width: 100%; z-index: 1000; box-sizing: border-box;
-        }
-        .brand {
-            font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 24px;
-            letter-spacing: 2px; color: var(--text-main); text-decoration: none;
-            display: flex; gap: 10px; align-items: center;
-        }
-        .btn-back {
-            background: transparent; border: 1px solid var(--glass-border); color: var(--text-sub);
-            padding: 8px 20px; border-radius: 8px; cursor: pointer; transition: 0.3s;
-            font-size: 13px; text-decoration: none; display: flex; gap: 8px; align-items: center;
-        }
-        .btn-back:hover { background: var(--glass-border); color: var(--text-main); }
-
-        .main-container { max-width: 1200px; margin: 100px auto 50px; padding: 0 20px; }
-
-        /* 头部卡片 */
-        .header-card {
-            background: var(--glass-panel); border: 1px solid var(--glass-border);
-            border-radius: 16px; padding: 30px; margin-bottom: 30px;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 40px; height: 64px;
             display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: var(--shadow);
         }
-        .course-title h2 { font-family: 'Rajdhani'; font-size: 32px; color: var(--primary); margin: 0; letter-spacing: 1px; }
-        .course-meta { color: var(--text-sub); margin-top: 5px; font-size: 14px; }
-        .weight-info { display: flex; gap: 20px; }
-        .weight-item { text-align: center; }
-        .weight-val { font-family: 'Rajdhani'; font-weight: 700; font-size: 24px; color: var(--accent); }
-        .weight-lbl { font-size: 11px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; }
+        .brand { font-size: 20px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .theme-toggle-btn { background: none; border: none; cursor: pointer; color: var(--text-sub); font-size: 18px; padding: 8px; border-radius: 50%; transition: all 0.2s; }
+        .theme-toggle-btn:hover { background-color: var(--hover-bg); color: var(--text-main); }
+        .btn-logout { color: #ef4444; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 6px; }
 
-        /* 表格 */
-        .grid-container {
-            background: var(--glass-panel); border: 1px solid var(--glass-border);
-            border-radius: 16px; overflow: hidden; padding: 5px;
+        /* 主内容区 */
+        .main-content {
+            flex: 1; padding: 40px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;
         }
-        .cyber-grid { width: 100%; border-collapse: collapse; }
-        .cyber-grid th {
-            background: rgba(0,0,0,0.2); color: var(--text-sub); padding: 15px; text-align: left;
-            font-size: 12px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);
-        }
-        .cyber-grid td {
-            padding: 15px; color: var(--text-main); border-bottom: 1px solid var(--glass-border);
-            font-size: 14px; vertical-align: middle;
-        }
-        .cyber-grid tr:hover td { background: var(--table-hover); }
 
-        /* 输入框样式 */
+        .page-header { margin-bottom: 30px; display:flex; justify-content:space-between; align-items:center; }
+        .page-title { font-size: 24px; font-weight: 700; margin: 0; color: var(--text-main); }
+        .btn-back {
+            color: var(--text-sub); text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s;
+        }
+        .btn-back:hover { background: var(--hover-bg); color: var(--text-main); border-color: var(--text-sub); }
+
+        /* 课程信息卡片 (锚点) */
+        .course-info-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(14, 165, 233, 0.05) 100%);
+            border: 1px solid var(--border); border-left: 4px solid var(--primary);
+            border-radius: 12px; padding: 24px; margin-bottom: 30px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: var(--shadow);
+        }
+        .info-item h3 { margin: 0 0 5px 0; font-size: 14px; color: var(--text-sub); font-weight: 500; }
+        .info-item .value { font-size: 20px; font-weight: 700; color: var(--text-main); }
+        .info-icon { font-size: 32px; color: var(--primary); opacity: 0.2; }
+
+        /* 表格区域 */
+        .table-section {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 80px; /* 为底部保存栏留出空间 */
+        }
+        .table-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .table-title { font-size: 18px; font-weight: 600; color: var(--text-main); }
+
+        .custom-grid { width: 100%; border-collapse: collapse; color: var(--text-main); }
+        .custom-grid th {
+            text-align: left; padding: 14px 16px;
+            color: var(--text-sub); font-size: 13px; font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+        .custom-grid td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+        .custom-grid tr:hover { background-color: var(--hover-bg); }
+
+        /* 输入框样式优化 */
         .grade-input {
-            background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff;
-            padding: 8px 12px; border-radius: 6px; width: 50px; text-align: center;
-            font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px;
-            transition: 0.3s; outline: none;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px; border-radius: 6px;
+            width: 100px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 15px;
+            transition: all 0.2s; outline: none;
         }
-        .grade-input:focus { border-color: var(--primary); background: rgba(14, 165, 233, 0.1); box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }
+        .grade-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
+        
+        /* 实时反馈颜色 */
+        .grade-input.score-pass { color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+        .grade-input.score-fail { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
 
-        /* 禁用状态 */
-        .grade-input.disabled {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: #555 !important;
-            border-color: transparent !important;
-            cursor: not-allowed;
+        /* 底部悬浮保存栏 */
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--bg-card); border-top: 1px solid var(--border);
+            padding: 15px 40px;
+            display: flex; justify-content: flex-end; align-items: center; gap: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 999;
         }
-
-        .total-score { font-family: 'Rajdhani'; font-weight: 700; font-size: 18px; color: var(--primary); }
-
-        /* 单行保存按钮 */
-        .btn-row-save {
-            background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success);
-            padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; transition: 0.3s;
+        .btn-save {
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            color: white; border: none; padding: 12px 30px; border-radius: 8px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            transition: transform 0.2s;
         }
-        .btn-row-save:hover { background: var(--success); color: #fff; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .btn-save:hover { transform: translateY(-2px); }
 
     </style>
 </head>
 <body>
-    <canvas id="particle-canvas"></canvas>
-
     <form id="form1" runat="server">
-    <div class="navbar">
-        <a href="#" class="brand">
-            <i class="fas fa-edit"></i> GRADE MATRIX
-        </a>
-        <a href="TeacherHome.aspx" class="btn-back"><i class="fas fa-arrow-left"></i> Return</a>
-    </div>
-
-    <div class="main-container">
-        <div class="header-card">
-            <div class="course-title">
-                <h2><asp:Label ID="lblCourseName" runat="server">Course Name</asp:Label></h2>
-                <div class="course-meta">ID: <asp:Label ID="lblCourseId" runat="server"></asp:Label> | Single Entry Mode</div>
+        <nav class="navbar">
+            <div class="brand">
+                <i class="fas fa-edit"></i> 成绩录入控制台
             </div>
-            <div class="weight-info">
-                <div class="weight-item"><span class="weight-val"><asp:Label ID="lblWReg" runat="server">0</asp:Label>%</span><div class="weight-lbl">Regular</div></div>
-                <div class="weight-item"><span class="weight-val"><asp:Label ID="lblWHwk" runat="server">0</asp:Label>%</span><div class="weight-lbl">Homework</div></div>
-                <div class="weight-item"><span class="weight-val"><asp:Label ID="lblWMid" runat="server">0</asp:Label>%</span><div class="weight-lbl">Midterm</div></div>
-                <div class="weight-item"><span class="weight-val"><asp:Label ID="lblWFin" runat="server">0</asp:Label>%</span><div class="weight-lbl">Final</div></div>
+            
+            <div class="nav-right">
+                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">
+                    <i class="fas fa-adjust" id="themeIcon"></i>
+                </button>
+                <asp:LinkButton ID="btnLogout" runat="server" OnClick="btnLogout_Click" CssClass="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </asp:LinkButton>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            
+            <div class="page-header">
+                <h1 class="page-title">录入/修改成绩</h1>
+                <asp:LinkButton ID="btnBack" runat="server" OnClick="btnBack_Click" CssClass="btn-back">
+                    <i class="fas fa-arrow-left"></i> 返回列表
+                </asp:LinkButton>
+            </div>
+
+            <div class="course-info-card">
+                <div class="info-item">
+                    <h3>正在录入课程</h3>
+                    <div class="value"><asp:Label ID="lblCourseName" runat="server" Text="--"></asp:Label></div>
+                </div>
+                <div class="info-item">
+                    <h3>所属学期</h3>
+                    <div class="value"><asp:Label ID="lblTerm" runat="server" Text="--"></asp:Label></div>
+                </div>
+                <div class="info-icon">
+                    <i class="fas fa-book-reader"></i>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="table-header">
+                    <div class="table-title">学生名单与成绩表</div>
+                    <div style="font-size:13px; color:var(--text-sub);">
+                        <i class="fas fa-info-circle"></i> 提示：支持 Tab 键快速切换输入框；不及格分数将自动标红。
+                    </div>
+                </div>
+
+                <asp:GridView ID="gvStudents" runat="server" CssClass="custom-grid" AutoGenerateColumns="False" 
+                    GridLines="None" EmptyDataText="该课程暂无学生选修。">
+                    <Columns>
+                        <asp:BoundField DataField="StuNumber" HeaderText="学号" ItemStyle-Width="20%" />
+                        
+                        <asp:TemplateField HeaderText="姓名" ItemStyle-Width="20%">
+                            <ItemTemplate>
+                                <%-- 绑定 Label 用于后端报错时识别姓名 --%>
+                                <asp:Label ID="lblName" runat="server" Text='<%# Eval("Name") %>' style="font-weight:500;"></asp:Label>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+
+                        <asp:TemplateField HeaderText="成绩录入">
+                            <ItemTemplate>
+                                <asp:HiddenField ID="hfScoreId" runat="server" Value='<%# Eval("ScoreId") %>' />
+                                
+                                <%-- 
+                                    逻辑自查: 
+                                    1. type="number": 限制只能输入数字
+                                    2. min/max: 前端基础拦截
+                                    3. oninput: 触发JS变色逻辑
+                                --%>
+                                <asp:TextBox ID="txtScore" runat="server" Text='<%# Eval("Score") %>' 
+                                    CssClass="grade-input" type="number" step="0.5" min="0" max="100"
+                                    oninput="validateScore(this)" placeholder="0-100"></asp:TextBox>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+
+                        <asp:TemplateField HeaderText="状态预览">
+                            <ItemTemplate>
+                                <%-- 占位符，由JS动态填充文字 --%>
+                                <span class="status-preview" style="font-size:12px; font-weight:600;">--</span>
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                    </Columns>
+                    <EmptyDataTemplate>
+                        <div style="padding:40px; text-align:center; color:var(--text-sub);">
+                            <i class="fas fa-users-slash" style="font-size:32px; margin-bottom:10px; opacity:0.5;"></i>
+                            <p>暂时没有学生选修这门课程。</p>
+                        </div>
+                    </EmptyDataTemplate>
+                </asp:GridView>
             </div>
         </div>
 
-        <div class="grid-container">
-            <asp:GridView ID="gvGrades" runat="server" AutoGenerateColumns="False" DataKeyNames="ScoreId"
-                CssClass="cyber-grid" GridLines="None" 
-                OnRowCommand="GvGrades_RowCommand"
-                OnRowDataBound="GvGrades_RowDataBound">
-                <Columns>
-                    <asp:BoundField DataField="StuNumber" HeaderText="ID" ReadOnly="true" />
-                    <asp:BoundField DataField="Name" HeaderText="STUDENT NAME" ReadOnly="true" ItemStyle-Font-Bold="true" />
-                    
-                    <%-- 平时成绩 --%>
-                    <asp:TemplateField HeaderText="REGULAR">
-                        <ItemTemplate>
-                            <asp:TextBox ID="txtReg" runat="server" CssClass="grade-input" Text='<%# Eval("ScoreRegular") %>'></asp:TextBox>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 作业成绩 --%>
-                    <asp:TemplateField HeaderText="HOMEWORK">
-                        <ItemTemplate>
-                            <asp:TextBox ID="txtHwk" runat="server" CssClass="grade-input" Text='<%# Eval("ScoreHomework") %>'></asp:TextBox>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 期中成绩 --%>
-                    <asp:TemplateField HeaderText="MIDTERM">
-                        <ItemTemplate>
-                            <asp:TextBox ID="txtMid" runat="server" CssClass="grade-input" Text='<%# Eval("ScoreMidterm") %>'></asp:TextBox>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 期末成绩 --%>
-                    <asp:TemplateField HeaderText="FINAL">
-                        <ItemTemplate>
-                            <asp:TextBox ID="txtFin" runat="server" CssClass="grade-input" Text='<%# Eval("ScoreFinal") %>'></asp:TextBox>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 总分 (只读) --%>
-                    <asp:TemplateField HeaderText="TOTAL">
-                        <ItemTemplate>
-                            <span class="total-score"><%# Eval("Score") %></span>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                    <%-- 单行保存按钮 --%>
-                    <asp:TemplateField HeaderText="ACTION" ItemStyle-HorizontalAlign="Right">
-                        <ItemTemplate>
-                            <asp:Button ID="btnSaveOne" runat="server" Text="SAVE" 
-                                CommandName="SaveOne" CommandArgument='<%# Container.DataItemIndex %>'
-                                CssClass="btn-row-save" />
-                        </ItemTemplate>
-                    </asp:TemplateField>
-                </Columns>
-            </asp:GridView>
+        <div class="bottom-bar">
+            <div style="margin-right:auto; color:var(--text-sub); font-size:13px;">
+                <i class="fas fa-check-circle" style="color:var(--success)"></i> 系统已准备就绪
+            </div>
+            <asp:Button ID="btnSave" runat="server" Text="保存所有更改" OnClick="btnSave_Click" CssClass="btn-save" />
         </div>
-    </div>
     </form>
 
     <script>
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, particles = [];
-        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-        class Particle {
-            constructor() { this.x = Math.random() * width; this.y = Math.random() * height; this.vx = (Math.random() - .5) * 0.5; this.vy = (Math.random() - .5) * 0.5; this.size = Math.random() * 2; }
-            update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > width) this.vx *= -1; if (this.y < 0 || this.y > height) this.vy *= -1; }
-            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = 'rgba(14, 165, 233, 0.3)'; ctx.fill(); }
+        // === 1. 分数验证与变色逻辑 ===
+        function validateScore(input) {
+            const val = parseFloat(input.value);
+            const row = input.closest('tr');
+            const statusSpan = row.querySelector('.status-preview');
+
+            // 移除旧类
+            input.classList.remove('score-pass', 'score-fail');
+
+            if (isNaN(val)) {
+                // 空值
+                if (statusSpan) { statusSpan.textContent = "待录入"; statusSpan.style.color = "var(--text-sub)"; }
+                return;
+            }
+
+            // 范围提示
+            if (val < 0 || val > 100) {
+                input.style.borderColor = "var(--danger)";
+                if (statusSpan) { statusSpan.textContent = "❌ 无效数值"; statusSpan.style.color = "var(--danger)"; }
+                return;
+            }
+
+            // 及格判定
+            if (val >= 60) {
+                input.classList.add('score-pass');
+                if (statusSpan) { statusSpan.textContent = "✅ 及格"; statusSpan.style.color = "var(--success)"; }
+            } else {
+                input.classList.add('score-fail');
+                if (statusSpan) { statusSpan.textContent = "⚠️ 不及格"; statusSpan.style.color = "var(--danger)"; }
+            }
         }
-        function init() { particles = []; for (let i = 0; i < 60; i++) particles.push(new Particle()); }
-        function animate() { ctx.clearRect(0, 0, width, height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animate); }
-        window.addEventListener('resize', () => { resize(); init(); }); resize(); init(); animate();
+
+        // === 2. 页面加载时初始化颜色 ===
+        window.onload = function () {
+            const inputs = document.querySelectorAll('.grade-input');
+            inputs.forEach(input => validateScore(input));
+
+            // 初始化主题
+            const saved = localStorage.getItem('theme') || 'dark';
+            updateIcon(saved);
+        };
+
+        // === 3. 主题切换 ===
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('theme', target);
+            updateIcon(target);
+        }
+
+        function updateIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (icon) icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        }
     </script>
 </body>
 </html>
