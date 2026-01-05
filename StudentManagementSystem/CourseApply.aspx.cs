@@ -1,20 +1,26 @@
 ﻿using System;
+using System.Data;
 using System.Data.SqlClient;
-using System.Drawing;
 using System.Web.UI;
+using System.Drawing; // 用于 Color
+
+// 抑制 IDE1006 命名规则警告
+#pragma warning disable IDE1006
 
 public partial class CourseApply : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
-        // 权限验证
+        // 1. 权限验证
         if (Session["Role"] == null || Session["Role"].ToString() != "Teacher")
             Response.Redirect("Login.aspx");
 
         if (!IsPostBack)
         {
-            // 防止 Session 为空报错
+            // 防止 Session 为空导致报错
             lblName.Text = Session["User"] != null ? Session["User"].ToString() : "Teacher";
+
+            // 设置默认学期，方便录入 (可根据实际情况修改或置空)
             txtTerm.Text = "2025-2026-1";
         }
     }
@@ -37,33 +43,28 @@ public partial class CourseApply : System.Web.UI.Page
         // 2. 基础非空验证
         if (string.IsNullOrEmpty(cname) || string.IsNullOrEmpty(creditStr) || string.IsNullOrEmpty(capStr))
         {
-            ShowMsg("⚠️ All fields are required.", false);
+            ShowMsg("⚠️ Course Name, Credit, and Capacity are required.", false);
             return;
         }
 
-        // 3. 数值类型验证
-        decimal credit;
-        int cap;
-        bool b1 = decimal.TryParse(creditStr, out credit);
-        bool b2 = int.TryParse(capStr, out cap);
-
-        if (!b1 || !b2)
+        // 3. 数字格式验证
+        int credit, cap;
+        if (!int.TryParse(creditStr, out credit) || credit <= 0)
         {
-            ShowMsg("⚠️ Credit/Capacity must be valid numbers.", false);
+            ShowMsg("⚠️ Credit must be a positive integer.", false);
+            return;
+        }
+        if (!int.TryParse(capStr, out cap) || cap <= 0)
+        {
+            ShowMsg("⚠️ Capacity must be a positive integer.", false);
             return;
         }
 
-        // =========================================================================
-        // [最终修复]：移除数据库中不存在的 'Description' 和 'CourseType' 字段
-        // 只插入最基础的字段，确保 100% 成功
-        // =========================================================================
+        // 4. 插入数据库 (Status 默认为 0: 待审核)
+        // 注意：Courses 表结构应包含 Status 字段
         string sql = @"
-            INSERT INTO Courses 
-            (CourseName, TeacherId, Credit, semester, MaxCapacity, status, 
-             WeightRegular, WeightHomework, WeightMidterm, WeightFinal) 
-            VALUES 
-            (@name, @tid, @credit, @term, @cap, 0, 
-             20, 20, 30, 30)";
+            INSERT INTO Courses (CourseName, TeacherId, Credit, Semester, MaxCapacity, Status) 
+            VALUES (@name, @tid, @credit, @term, @cap, 0)";
 
         try
         {
@@ -78,7 +79,7 @@ public partial class CourseApply : System.Web.UI.Page
             {
                 ShowMsg("✅ Application Submitted! Check status in 'Application Status'.", true);
 
-                // 成功后清空
+                // 成功后清空输入框
                 txtName.Text = "";
                 txtCredit.Text = "";
                 txtCapacity.Text = "";
@@ -99,12 +100,14 @@ public partial class CourseApply : System.Web.UI.Page
         }
     }
 
+    // 辅助方法：统一显示提示信息
     private void ShowMsg(string msg, bool isSuccess)
     {
         lblMsg.Text = msg;
         lblMsg.ForeColor = isSuccess ? Color.LimeGreen : Color.Red;
     }
 
+    // 注销方法
     protected void btnLogout_Click(object sender, EventArgs e)
     {
         Session.Clear();
